@@ -16,6 +16,9 @@ const route3 = require("./controllers/adminPatchController.js");
 const route4 = require("./controllers/adminDeleteController.js");
 const route5 = require("./controllers/adminViewController.js");
 const adminRoutes = require("./controllers/AdminLoginController.js");
+const { connectRedis } = require("./DB/redis.js");
+
+connectRedis();
 const app = express();
 const PORT = process.env.PORT;
 

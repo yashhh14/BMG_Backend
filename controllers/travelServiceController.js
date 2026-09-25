@@ -1,8 +1,8 @@
 const express = require("express");
 const route = express.Router();
 const { Train, Flight, Bus, Cab, Hotel } = require("../models/TravelServicesModel.js");
-
-route.get("/api/trains",   async (req, res) => {
+const { redisClient } = require("../DB/redis.js");
+route.get("/api/trains", async (req, res) => {
     try {
         const { from, to } = req.query;
         if (!from || !to) {
@@ -13,6 +13,23 @@ route.get("/api/trains",   async (req, res) => {
         }
         const fromStation = from.trim();
         const toStation = to.trim();
+        const cacheKey = `trains:${fromStation.toLowerCase()}:${toStation.toLowerCase()}`;
+
+        const cachedTrains = await redisClient.get(cacheKey);
+
+        if (cachedTrains) {
+            const trains = JSON.parse(cachedTrains);
+
+            console.log("Redis cache HIT:", cacheKey);
+
+            return res.status(200).json({
+                success: true,
+                count: trains.length,
+                trains
+            });
+        }
+
+        console.log("Redis cache MISS:", cacheKey);
         const trains = await Train.find({
             $expr: {
                 $let: {
@@ -110,6 +127,12 @@ route.get("/api/trains",   async (req, res) => {
                 }
             }
         });
+        await redisClient.setEx(
+            cacheKey,
+            300,
+            JSON.stringify(trains)
+        );
+        console.log("Data stored in Redis:", cacheKey);
         res.status(200).json({
             success: true,
             count: trains.length,
@@ -122,7 +145,7 @@ route.get("/api/trains",   async (req, res) => {
         });
     }
 });
-route.get("/api/flights",   async (req, res) => {
+route.get("/api/flights", async (req, res) => {
     try {
         const { from, to } = req.query;
         if (!from || !to) {
@@ -131,6 +154,23 @@ route.get("/api/flights",   async (req, res) => {
                 message: "from and to are required"
             });
         }
+        const cacheKey = `flights:${fromStation}:${toStation}`;
+
+        const cachedFlights = await redisClient.get(cacheKey);
+
+        if (cachedFlights) {
+            const flights = JSON.parse(cachedFlights);
+
+            console.log("Redis cache HIT:", cacheKey);
+
+            return res.status(200).json({
+                success: true,
+                count: flights.length,
+                flights
+            });
+        }
+
+        console.log("Redis cache MISS:", cacheKey);
         const flights = await Flight.find({
             source: {
                 $regex: `^${from.trim()}$`,
@@ -141,6 +181,11 @@ route.get("/api/flights",   async (req, res) => {
                 $options: "i"
             }
         });
+        await redisClient.setEx(
+            cacheKey,
+            300,
+            JSON.stringify(flights)
+        );
         res.status(200).json({
             success: true,
             count: flights.length,
@@ -154,32 +199,8 @@ route.get("/api/flights",   async (req, res) => {
     }
 });
 
-route.post("/api/trains",   async (req, res) => {
-    try {
-        const {trainNo,trainName,source,destination,departure,arrival,duration,distance,classes,seatAvailability,stops,on_which_day} = req.body;
-        const existingTrain = await Train.findOne({ trainNo });
-        if (existingTrain) {
-            return res.status(400).json({
-                success: false,
-                message: "Train number already exists"
-            });
-        }
-        const train = await Train.create({trainNo,trainName,source,destination,departure,arrival,duration,distance,classes,seatAvailability,stops,on_which_day});
-        res.status(201).json({
-            success: true,
-            message: "Train created successfully",
-            train
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
-    }
-}
-);
 
-route.get("/api/buses",   async (req, res) => {
+route.get("/api/buses", async (req, res) => {
     try {
         const { from, to } = req.query;
         if (!from || !to) {
@@ -190,6 +211,23 @@ route.get("/api/buses",   async (req, res) => {
         }
         const fromStation = from.trim().toLowerCase();
         const toStation = to.trim().toLowerCase();
+        const cacheKey = `buses:${fromStation}:${toStation}`;
+
+        const cachedBuses = await redisClient.get(cacheKey);
+
+        if (cachedBuses) {
+            const buses = JSON.parse(cachedBuses);
+
+            console.log("Redis cache HIT:", cacheKey);
+
+            return res.status(200).json({
+                success: true,
+                count: buses.length,
+                buses
+            });
+        }
+
+        console.log("Redis cache MISS:", cacheKey);
         const buses = await Bus.find({
             $expr: {
                 $let: {
@@ -270,6 +308,11 @@ route.get("/api/buses",   async (req, res) => {
                 }
             }
         });
+        await redisClient.setEx(
+            cacheKey,
+            300,
+            JSON.stringify(buses)
+        );
         res.status(200).json({
             success: true,
             count: buses.length,
@@ -283,7 +326,7 @@ route.get("/api/buses",   async (req, res) => {
     }
 });
 
-route.get("/api/cabs",   async (req, res) => {
+route.get("/api/cabs", async (req, res) => {
     try {
         const { city } = req.query;
         if (!city) {
@@ -293,6 +336,23 @@ route.get("/api/cabs",   async (req, res) => {
             });
         }
         const cityName = city.trim().toLowerCase();
+        const cacheKey = `cabs:${cityName}`;
+
+        const cachedCabs = await redisClient.get(cacheKey);
+
+        if (cachedCabs) {
+            const result = JSON.parse(cachedCabs);
+
+            console.log("Redis cache HIT:", cacheKey);
+
+            return res.status(200).json({
+                success: true,
+                count: result.length,
+                cabs: result
+            });
+        }
+
+        console.log("Redis cache MISS:", cacheKey);
         const cabDocs = await Cab.find().lean();
         let result = [];
         for (const doc of cabDocs) {
@@ -305,6 +365,11 @@ route.get("/api/cabs",   async (req, res) => {
         }
         result = result.filter(
             cab => cab.status?.toLowerCase() === "available"
+        );
+         await redisClient.setEx(
+            cacheKey,
+            300,
+            JSON.stringify(result)
         );
         res.status(200).json({
             success: true,
@@ -319,7 +384,7 @@ route.get("/api/cabs",   async (req, res) => {
     }
 });
 
-route.get("/api/hotels",   async (req, res) => {
+route.get("/api/hotels", async (req, res) => {
     try {
         const { city } = req.query;
         if (!city) {
@@ -329,6 +394,24 @@ route.get("/api/hotels",   async (req, res) => {
             });
         }
         const cityName = city.trim().toLowerCase();
+        const cacheKey = `hotels:${cityName}`;
+
+        const cachedHotels = await redisClient.get(cacheKey);
+
+        if (cachedHotels) {
+            const result = JSON.parse(cachedHotels);
+
+            console.log("Redis cache HIT:", cacheKey);
+
+            return res.status(200).json({
+                success: true,
+                count: result.length,
+                hotels: result
+            });
+        }
+
+        console.log("Redis cache MISS:", cacheKey);
+
         const hotelDocs = await Hotel.find().lean();
         let result = [];
         for (const doc of hotelDocs) {
@@ -339,6 +422,11 @@ route.get("/api/hotels",   async (req, res) => {
                 result.push(...doc[cityKey]);
             }
         }
+         await redisClient.setEx(
+            cacheKey,
+            300,
+            JSON.stringify(result)
+        );
         res.status(200).json({
             success: true,
             count: result.length,
