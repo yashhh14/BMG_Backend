@@ -148,15 +148,21 @@ route.get("/api/trains", async (req, res) => {
 route.get("/api/flights", async (req, res) => {
     try {
         const { from, to } = req.query;
+
         console.log("PRODUCTION FLIGHT ROUTE - NEW CODE");
         console.log("from:", from);
         console.log("to:", to);
+
         if (!from || !to) {
             return res.status(400).json({
                 success: false,
                 message: "from and to are required"
             });
         }
+
+        const fromStation = from.trim().toLowerCase();
+        const toStation = to.trim().toLowerCase();
+
         const cacheKey = `flights:${fromStation}:${toStation}`;
 
         const cachedFlights = await redisClient.get(cacheKey);
@@ -174,28 +180,36 @@ route.get("/api/flights", async (req, res) => {
         }
 
         console.log("Redis cache MISS:", cacheKey);
+
         const flights = await Flight.find({
             source: {
-                $regex: `^${from.trim()}$`,
+                $regex: `^${fromStation}$`,
                 $options: "i"
             },
             destination: {
-                $regex: `^${to.trim()}$`,
+                $regex: `^${toStation}$`,
                 $options: "i"
             }
         });
+
         await redisClient.setEx(
             cacheKey,
             300,
             JSON.stringify(flights)
         );
-        res.status(200).json({
+
+        console.log("Data stored in Redis:", cacheKey);
+
+        return res.status(200).json({
             success: true,
             count: flights.length,
             flights
         });
+
     } catch (err) {
-        res.status(500).json({
+        console.error("Flight search error:", err);
+
+        return res.status(500).json({
             success: false,
             message: err.message
         });
