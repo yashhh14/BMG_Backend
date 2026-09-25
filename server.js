@@ -25,7 +25,7 @@ const PORT = process.env.PORT;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://book-my-journeyv1.netlify.app"],
     methods: ["GET","POST","PUT","PATCH","DELETE"],
     credentials: true
 }));
