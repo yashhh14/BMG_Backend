@@ -146,11 +146,11 @@ route.get("/api/trains", async (req, res) => {
     }
 });
 route.get("/api/flights", async (req, res) => {
-    console.log("PRODUCTION FLIGHT ROUTE - NEW CODE");
-    console.log("from:", from);
-    console.log("to:", to);
     try {
         const { from, to } = req.query;
+        console.log("PRODUCTION FLIGHT ROUTE - NEW CODE");
+        console.log("from:", from);
+        console.log("to:", to);
         if (!from || !to) {
             return res.status(400).json({
                 success: false,
