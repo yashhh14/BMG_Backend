@@ -146,6 +146,9 @@ route.get("/api/trains", async (req, res) => {
     }
 });
 route.get("/api/flights", async (req, res) => {
+    console.log("PRODUCTION FLIGHT ROUTE - NEW CODE");
+    console.log("from:", from);
+    console.log("to:", to);
     try {
         const { from, to } = req.query;
         if (!from || !to) {
@@ -366,7 +369,7 @@ route.get("/api/cabs", async (req, res) => {
         result = result.filter(
             cab => cab.status?.toLowerCase() === "available"
         );
-         await redisClient.setEx(
+        await redisClient.setEx(
             cacheKey,
             300,
             JSON.stringify(result)
@@ -422,7 +425,7 @@ route.get("/api/hotels", async (req, res) => {
                 result.push(...doc[cityKey]);
             }
         }
-         await redisClient.setEx(
+        await redisClient.setEx(
             cacheKey,
             300,
             JSON.stringify(result)
